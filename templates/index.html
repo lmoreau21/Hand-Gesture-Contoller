@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Computer Vision App</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>$(document).ready(function() {
+        // Add a default row
+        $("#add-row").click();
+    });</script>
+</head>
+<body>
+    <h2>Computer Vision App</h2>
+    <p> Create a Keybind for each gesture you want to record. Select Create Images to track geatures and record them, select run classifier to run the keybinds, and select pull saved keybinds to use a previous version of the model</p>
+    <button id="pull_keybind">Pull Saved Keybinds</button>
+    <button id="create-images">Create Images</button>
+    <button id="inference-classifier">Run Classifier</button>
+    <br>
+    <h3>Keybind Table</h3>
+    <script>
+        $("#create-images").click(function() {
+            $.post("/create_images", function() {
+                alert("Images created successfully");
+            });
+        });
+
+        $("#create-data").click(function() {
+            $.post("/create_data", function() {
+                alert("Data created successfully");
+            });
+        });
+
+        $("#train-classifier").click(function() {
+            $.post("/train_classifier", function() {
+                alert("Classifier trained successfully");
+            });
+        });
+
+        $("#inference-classifier").click(function() {
+            $.post("/inference_classifier", function() {
+                
+            });
+        });
+
+        
+
+        
+    </script>
+    <table id="keybinder-table">
+        <thead>
+            <tr>
+                <th>Gesture Name</th>
+                <th>Key</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+    <button id="add-row">Add Row</button>
+    
+    <script>
+        const KEYBOARD_MAPPING_KEYS = [
+    'escape', 'esc', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12',
+    'printscreen', 'prntscrn', 'prtsc', 'prtscr', 'scrolllock', 'pause', '`', '1', '2', '3', '4',
+    '5', '6', '7', '8', '9', '0', '-', '=', 'backspace', 'insert', 'home', 'pageup', 'pagedown',
+    'numlock', 'divide', 'multiply', 'subtract', 'add', 'decimal', 'numpadenter', 'numpad1', 'numpad2',
+    'numpad3', 'numpad4', 'numpad5', 'numpad6', 'numpad7', 'numpad8', 'numpad9', 'numpad0', 'tab', 'q', 'w',
+    'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\', 'del', 'delete', 'end', 'capslock', 'a', 's',
+    'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", 'enter', 'return', 'shift', 'shiftleft', 'z', 'x', 'c',
+    'v', 'b', 'n', 'm', ',', '.', '/', 'shiftright', 'ctrl', 'ctrlleft', 'win', 'winleft', 'alt', 'altleft',
+    'space', 'altright', 'winright', 'apps', 'ctrlright', 'up', 'left', 'down', 'right'
+        ];
+        var table = document.getElementById('keybinder-table');
+        let storedResponse; 
+
+        $("#pull_keybind").click(function() {
+            $.get("/get_dicts", function(data) {
+                $("#keybinder-table tbody").empty(); // Clear existing rows
+                for (var gesture in data) {
+                    addRow(gesture, data[gesture]); // Add a row for each keybind
+                }
+            }).fail(function(xhr) {
+                console.log("Error: ", xhr.responseText);
+                $("#displayArea").text("Failed to get data");
+            });
+        });
+        
+        
+        function addRow(gesture = "", key = "") {
+            var row = $("<tr>");
+            var gestureCell = $("<td>").append($("<input>").attr("type", "text").val(gesture));
+        
+            var select = $("<select>").attr("name", "keybind");
+            KEYBOARD_MAPPING_KEYS.forEach(function(keyOption) {
+                var option = $("<option>").attr("value", keyOption).text(keyOption);
+                if (keyOption === key) {
+                    option.attr("selected", "selected");
+                }
+                select.append(option);
+            });
+        
+            var keyCell = $("<td>").append(select);
+            var removeButton = $("<button>").text("Remove").click(function() {
+                $(this).closest("tr").remove();
+            });
+            var removeCell = $("<td>").append(removeButton);
+        
+            row.append(gestureCell, keyCell, removeCell);
+            $("#keybinder-table tbody").append(row);
+        }
+
+        // Add row
+        $("#add-row").click(function() {
+           addRow();
+        });
+        
+    </script>
+    <button id="save-changes">Save Changes</button>
+
+    <script>
+        $('#save-changes').click(function() {
+            var updatedLabelsDict = {};
+            var updatedKeybindsDict = {};
+
+            var allRowsHaveValues = true;
+
+            $('#keybinder-table tbody tr').each(function() {
+                var gesture = $(this).find('input[type="text"]').val();
+                var keybind = $(this).find('select').val();
+
+                if (!gesture || !keybind) {
+                    allRowsHaveValues = false;
+                    return false; // break the .each() loop
+                }
+
+                updatedLabelsDict[gesture] = gesture;
+                updatedKeybindsDict[gesture] = keybind;
+            });
+
+            if (!allRowsHaveValues) {
+                alert('Please fill in all rows before saving changes.');
+                return;
+            }
+
+            $.ajax({
+                url: '/update_dicts',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    keybinds_dict: updatedKeybindsDict
+                }),
+                success: function(response) {
+                    console.log(response);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
