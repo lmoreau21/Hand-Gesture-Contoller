@@ -1,50 +1,113 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Computer Vision App</title>
+    <title>Hand Symbol Detector and Controller</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>$(document).ready(function() {
-        // Add a default row
+        
         $("#add-row").click();
     });</script>
 </head>
 <body>
-    <h2>Computer Vision App</h2>
-    <p> Create a Keybind for each gesture you want to record. Select Create Images to track geatures and record them, select run classifier to run the keybinds, and select pull saved keybinds to use a previous version of the model</p>
-    <button id="pull_keybind">Pull Saved Keybinds</button>
-    <button id="create-images">Create Images</button>
-    <button id="inference-classifier">Run Classifier</button>
-    <br>
-    <h3>Keybind Table</h3>
+    <h2>Hand Symbol Detector and Controller</h2>
+    <p> Follow the steps below to create a keybind, record images, train the model, and run the classifier. </p>
+    <ul>
+        <li>
+            <p>Step 1: Name your keybind or select existing</p>
+            <div>
+                <label for="folder_name">Folder Name:</label>
+                <input type="text" id="folder_name" name="folder_name">
+                <button id="create_folder">Create Folder</button>
+            </div>
+            <style>
+                #keybinds, label[for="keybinds"] {
+                    display: inline-block;
+                }
+            </style>
+            
+            <label for="keybinds">Select Keybind Name:</label>
+            <div id="keybinds"></div>
+        </li>
+        <li>
+            <label for="pull_keybind">Step 2: Pull Saved Keybinds or Create Keybinds using Table below</label>
+            <button id="pull_keybind">Pull Saved Keybinds</button>
+        </li>
+        <li>
+            <label for="create-images">Step 3: Create Images:  Records 100 frames of you performing the gesture. Then, it trains the model. </label>
+            <button id="create-images">Create Images</button>
+           
+        </li>
+        <li>
+            <label for="inference-classifier">Step 4: Run Classifer:  Tracks hand and presses keys </label>
+            <button id="inference-classifier">Run Classifier</button>
+        </li>
+    </ul>
+
     <script>
+        
         $("#create-images").click(function() {
+            var folder_name = $("#selected-folder").text();
+            console.log("Folder name: ",folder_name);
+            $.ajax({
+                url: '/set_folder_name',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    folder_name: folder_name
+                }),
+                success: function(response) {
+                    console.log(response);
+                }
+            });
             $.post("/create_images", function() {
                 alert("Images created successfully");
             });
         });
 
-        $("#create-data").click(function() {
-            $.post("/create_data", function() {
-                alert("Data created successfully");
-            });
-        });
-
-        $("#train-classifier").click(function() {
-            $.post("/train_classifier", function() {
-                alert("Classifier trained successfully");
-            });
-        });
-
         $("#inference-classifier").click(function() {
+            var folder_name = $("#selected-folder").text();
+            console.log("Folder name: ",folder_name);
+            $.ajax({
+                url: '/set_folder_name',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    folder_name: folder_name
+                }),
+                success: function(response) {
+                    console.log(response);
+                }
+            });
             $.post("/inference_classifier", function() {
                 
             });
         });
 
-        
-
-        
+        $(document).ready(function() {
+            $.get("/get_folder_list", function(data) {
+                console.log(data);
+                var select = $("<select>").attr("name", "folder").attr("id", "folder-select");
+                for (var folder in data) {
+                    var option = $("<option>").attr("value", data[folder]).text(data[folder]);
+                    select.append(option); 
+                }
+                $("#keybinds").append(select); 
+                $("#selected-folder").text(select.val());
+            }).fail(function(xhr) {
+                console.log("Error: ", xhr.responseText);
+                $("#displayArea").text("Failed to get data");
+            });
+            
+            $(document).on('change', '#folder-select', function() {
+                var selectedFolder = $(this).val();
+                $("#selected-folder").text(selectedFolder);
+                createFolder(selectedFolder);
+            });
+        });
     </script>
+    
+    <h3>Keybinds: <span id="selected-folder"></span></h3>
+    
     <table id="keybinder-table">
         <thead>
             <tr>
@@ -59,20 +122,33 @@
     
     <script>
         const KEYBOARD_MAPPING_KEYS = [
-    'escape', 'esc', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12',
-    'printscreen', 'prntscrn', 'prtsc', 'prtscr', 'scrolllock', 'pause', '`', '1', '2', '3', '4',
-    '5', '6', '7', '8', '9', '0', '-', '=', 'backspace', 'insert', 'home', 'pageup', 'pagedown',
-    'numlock', 'divide', 'multiply', 'subtract', 'add', 'decimal', 'numpadenter', 'numpad1', 'numpad2',
-    'numpad3', 'numpad4', 'numpad5', 'numpad6', 'numpad7', 'numpad8', 'numpad9', 'numpad0', 'tab', 'q', 'w',
-    'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\', 'del', 'delete', 'end', 'capslock', 'a', 's',
-    'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", 'enter', 'return', 'shift', 'shiftleft', 'z', 'x', 'c',
-    'v', 'b', 'n', 'm', ',', '.', '/', 'shiftright', 'ctrl', 'ctrlleft', 'win', 'winleft', 'alt', 'altleft',
-    'space', 'altright', 'winright', 'apps', 'ctrlright', 'up', 'left', 'down', 'right'
+            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+            '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+            'space', 'up', 'left', 'down', 'right',
+            'escape', 'esc', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12',
+            'printscreen', 'prntscrn', 'prtsc', 'prtscr', 'scrolllock', 'pause', '`', '-', '=', 'backspace', 'insert', 'home', 'pageup', 'pagedown',
+            'numlock', 'divide', 'multiply', 'subtract', 'add', 'decimal', 'numpadenter', 'numpad1', 'numpad2',
+            'numpad3', 'numpad4', 'numpad5', 'numpad6', 'numpad7', 'numpad8', 'numpad9', 'numpad0', 'tab', '[', ']', '\\', 'del', 'delete', 'end', 'capslock',
+            ';', "'", 'enter', 'return', 'shift', 'shiftleft', ',', '.', '/', 'shiftright', 'ctrl', 'ctrlleft', 'win', 'winleft', 'alt', 'altleft',
+            'altright', 'winright', 'apps', 'ctrlright'
         ];
         var table = document.getElementById('keybinder-table');
         let storedResponse; 
 
         $("#pull_keybind").click(function() {
+            var folder_name = $("#selected-folder").text();
+            console.log("Folder name: ",folder_name);
+            $.ajax({
+                url: '/set_folder_name',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    folder_name: folder_name
+                }),
+                success: function(response) {
+                    console.log(response);
+                }
+            });
             $.get("/get_dicts", function(data) {
                 $("#keybinder-table tbody").empty(); // Clear existing rows
                 for (var gesture in data) {
@@ -108,7 +184,6 @@
             $("#keybinder-table tbody").append(row);
         }
 
-        // Add row
         $("#add-row").click(function() {
            addRow();
         });
@@ -117,6 +192,37 @@
     <button id="save-changes">Save Changes</button>
 
     <script>
+        function createFolder(value="") {
+            if (value === "") {
+                value = $('#folder_name').val();
+            }
+            folder_name = value;
+           
+            console.log('create folder called')
+            console.log(folder_name)
+            $.ajax({
+                url: '/create_folder',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    folder_name: folder_name
+                }),
+                success: function(response) {
+                    console.log(response);
+                }
+            });
+        }
+        $("#folder-select").change(function() {
+            var selectedFolder = $(this).val();
+            $("#selected-folder").text(selectedFolder);
+            createFolder(selectedFolder);
+        });
+
+        $('#create_folder').click(function() {
+                createFolder();
+            }    
+        );
+
         $('#save-changes').click(function() {
             var updatedLabelsDict = {};
             var updatedKeybindsDict = {};
@@ -154,5 +260,7 @@
             });
         });
     </script>
+    <h4>Test Box for Inputs</h4>
+    <textarea></textarea>
 </body>
 </html>

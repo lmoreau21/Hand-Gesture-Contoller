@@ -43,6 +43,23 @@ def inference_classifier():
     cv.inference_classifer()
     return 'Inference classifier run successfully'
 
+@app.route('/get_folder_list', methods=['GET'])
+def folder_list():
+    print(cv.get_all_folders())
+    return cv.get_all_folders(), 200
+
+@app.route('/create_folder', methods=['POST'])
+def create_folder():
+    cv.create_new_folder(request.json['folder_name'])
+    cv.update_folder_name(request.json['folder_name'])
+    return 'Folder created successfully'
+
+@app.route('/set_folder_name', methods=['POST'])
+def set_folder_name():
+    cv.update_folder_name(request.json['folder_name'])
+    return 'Folder name updated successfully'
+
+
 if __name__ == '__main__':
     app.run(debug=True)
 

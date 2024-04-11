@@ -13,33 +13,62 @@ from sklearn.metrics import accuracy_score
 from keras.preprocessing.sequence import pad_sequences
 
 keybinds_dict = {}
+folder_name = 'deafult'
 
 def get_keybinds_dict():
+    print('Getting keybinds dict')
+    print('Folder name: ', folder_name)
     try: 
-        keybinds_dict = pickle.load(open('keybinds_dict.p', 'rb'))
-    except:
+        keybinds_dict = pickle.load(open(f'{folder_name}/keybinds_dict.p', 'rb'))
+    except Exception as e:
         keybinds_dict = {}
+    print(keybinds_dict)
     return keybinds_dict
 
 def update_keybinds_dict(new_dict):
     global keybinds_dict
-    pickle.dump(new_dict, open('keybinds_dict.p', 'wb'))
+    pickle.dump(new_dict, open(f'{folder_name}/keybinds_dict.p', 'wb'))
     keybinds_dict = new_dict
-    print(keybinds_dict)
+    
+def update_folder_name(new_folder_name):
+    global folder_name
+    folder_name = new_folder_name
+    print('Folder name updated to: ', new_folder_name)
+ 
+
+def get_all_folders():
+    folders = [f for f in os.listdir('.') if os.path.isdir(f)]
+    folders.remove('__pycache__')
+    folders.remove('.conda')
+    folders.remove('templates')
+    folders.remove('.git')
+    return folders
+
+def create_new_folder(new_folder_name):
+    global folder_name
+    folder_name = new_folder_name
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+        return True
+    print(folder_name)
+    return False
     
 def create_images():
     print('Creating images')
     print('Keybinds dict: ', keybinds_dict)
-    DATA_DIR = './data'
+    DATA_DIR = f'./{folder_name}/data'
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
 
-    
     number_of_classes = len(keybinds_dict)
     print('Number of classes: {}'.format(number_of_classes))
     dataset_size = 100
+    mp_hands = mp.solutions.hands
+    mp_drawing = mp.solutions.drawing_utils
+    mp_drawing_styles = mp.solutions.drawing_styles
 
-
+    hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.5, min_tracking_confidence=0.5, max_num_hands=1)     
+    
     cap = cv2.VideoCapture(0)
     for key in keybinds_dict:
         name = keybinds_dict[key]
@@ -54,18 +83,44 @@ def create_images():
         done = False
         while True:
             ret, frame = cap.read()
-            cv2.putText(frame, 'Press "Q" to record: '+name, (100, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (78, 142, 129), 3, cv2.LINE_AA)
+            
+            results = hands.process(frame)
+            if results.multi_hand_landmarks:
+                # Only consider the first hand
+                hand_landmarks = results.multi_hand_landmarks[0]
+
+                mp_drawing.draw_landmarks(
+                    frame,  # image to draw
+                    hand_landmarks,  # model output
+                    mp_hands.HAND_CONNECTIONS,  # hand connections
+                    mp_drawing_styles.get_default_hand_landmarks_style(),
+                    mp_drawing_styles.get_default_hand_connections_style())
+            
+            cv2.putText(frame, 'Press "Q" to record: '+name, (100, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (33, 33, 33), 3, cv2.LINE_AA)
             cv2.imshow('frame', frame)
+            
             if cv2.waitKey(25) == ord('q'):
                 break
 
         counter = 0
         while counter < dataset_size:
             ret, frame = cap.read()
+            results = hands.process(frame)
+            if results.multi_hand_landmarks:
+                # Only consider the first hand
+                hand_landmarks = results.multi_hand_landmarks[0]
+
+                mp_drawing.draw_landmarks(
+                    frame,  # image to draw
+                    hand_landmarks,  # model output
+                    mp_hands.HAND_CONNECTIONS,  # hand connections
+                    mp_drawing_styles.get_default_hand_landmarks_style(),
+                    mp_drawing_styles.get_default_hand_connections_style())
+            
             cv2.imshow('frame', frame)
             cv2.waitKey(25)
             cv2.imwrite(os.path.join(DATA_DIR, str(key), '{}.jpg'.format(counter)), frame)
-
+            
             counter += 1
 
     cap.release()
@@ -78,7 +133,7 @@ def create_data():
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.3)
 
-    DATA_DIR = './data'
+    DATA_DIR = f'{folder_name}/data'
 
     data = []
     labels = []
@@ -111,12 +166,12 @@ def create_data():
                 data.append(data_aux)
                 labels.append(dir_)
 
-    f = open('data.pickle', 'wb')
+    f = open(f'{folder_name}/data.pickle', 'wb')
     pickle.dump({'data': data, 'labels': labels}, f)
     f.close()
 
 def train_classifier():
-    data_dict = pickle.load(open('./data.pickle', 'rb'))
+    data_dict = pickle.load(open(f'./{folder_name}/data.pickle', 'rb'))
     data_padded = pad_sequences(data_dict['data'], maxlen=84, dtype='float32', padding='post')
 
     shapes = [np.array(item).shape for item in data_dict['data']]
@@ -139,13 +194,14 @@ def train_classifier():
 
     print('{}% of samples were classified correctly !'.format(score * 100))
 
-    f = open('model.p', 'wb')
+    f = open(f'{folder_name}/model.p', 'wb')
     pickle.dump({'model': model}, f)
     f.close()
 
 
 def inference_classifer():
-    model_dict = pickle.load(open('./model.p', 'rb'))
+    print('Directory: ', folder_name)
+    model_dict = pickle.load(open(f'{folder_name}/model.p', 'rb'))
     keybinds_dict = get_keybinds_dict()
     model = model_dict['model']
     cap = cv2.VideoCapture(0)
@@ -158,7 +214,7 @@ def inference_classifer():
     mp_drawing = mp.solutions.drawing_utils
     mp_drawing_styles = mp.solutions.drawing_styles
 
-    hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.9, min_tracking_confidence=0.5, max_num_hands=1)
+    hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.5, min_tracking_confidence=0.5, max_num_hands=1)
 
     while True:
         ret, frame = cap.read()
@@ -175,7 +231,6 @@ def inference_classifer():
 
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
-
         results = hands.process(frame_rgb)
         if results.multi_hand_landmarks:
             # Only consider the first hand
@@ -215,13 +270,13 @@ def inference_classifer():
                 max_prob = np.max(probs)  # Find maximum probability
                 predicted_class_index = np.argmax(probs)  # Find class index with max probability
 
-                confidence_threshold = 0.98
+                confidence_threshold = 0.85
 
                 if max_prob > confidence_threshold:
                     predicted_class_label = model.classes_[predicted_class_index]  # This gets the class label (ensure alignment with keybinds_dict)
                     if predicted_class_label in keybinds_dict:
                         gesture_name = keybinds_dict[predicted_class_label]
-                        #print(f"Predicted gesture: {gesture_name} with confidence: {max_prob * 100:.2f}%")
+                        print(f"Predicted gesture: {gesture_name} with confidence: {max_prob * 100:.2f}%")
                         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 0), 4)
                         cv2.putText(frame, gesture_name, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 0, 0), 3, cv2.LINE_AA)
                         try:
