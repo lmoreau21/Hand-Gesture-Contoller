@@ -12,55 +12,77 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from keras.preprocessing.sequence import pad_sequences
 
-folder_name = 'deafult'
-
 def get_keybinds_dict(folder_name):
-    print('Getting keybinds dict')
-
+    """
+    This function loads the keybinds dictionary from the folder
+    
+    Args:
+        folder_name (str): The name of the folder where the data is stored
+        
+    Returns:
+        dict: A dictionary with the keybinds and the corresponding actions
+    """
     try: 
         keybinds_dict = pickle.load(open(f'data/{folder_name}/keybinds_dict.p', 'rb'))
     except Exception as e:
         keybinds_dict = {}
-    print(keybinds_dict)
     return keybinds_dict
 
 def update_keybinds_dict(new_dict, folder_name):
-    global keybinds_dict
+    """
+    This function updates the keybinds dictionary in the folder
     
+    Args:
+        new_dict (dict): A dictionary with the keybinds and the corresponding actions
+        folder_name (str): The name of the folder where the data is stored
+    """
     pickle.dump(new_dict, open(f'data/{folder_name}/keybinds_dict.p', 'wb'))
     
-    keybinds_dict = new_dict
-    
-    
-def update_folder_name(new_folder_name):
-    global folder_name
-    folder_name = new_folder_name
-    print('Folder name updated to: ', new_folder_name)
- 
-
 def get_all_folders():
+    """
+    Iterates over the data folder and returns the list of folder names
+    
+    Returns:
+        list: A list of folder names
+    """
     folders = [f for f in os.listdir('data') if os.path.isdir(os.path.join('data', f))]
-    print(folders)
-    print(folders)
     return folders
 
 def create_new_folder(new_folder_name):
+    """
+    Creates a new folder in the data directory if it does not exist
+    
+    Args:
+        new_folder_name (str): The name of the new folder
+        
+    Returns:
+        bool: True if the folder was created, False otherwise
+    """
     folder_name = 'data/'+new_folder_name
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
         return True
-    print(folder_name)
     return False
     
 def create_images(folder_name, keybinds_dict):
-    print('Creating images')
-    print('Keybinds dict: ', keybinds_dict)
+    """
+    This function creates images for each keybind in the keybinds_dict
+    
+    Args:
+        folder_name (str): The name of the folder where the data will be stored
+        keybinds_dict (dict): A dictionary with the keybinds and the corresponding actions
+        
+    Returns:
+        None
+    """
+    
     DATA_DIR = f'./data/{folder_name}/data'
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
 
-    number_of_classes = len(keybinds_dict)
-    print('Number of classes: {}'.format(number_of_classes))
+    if keybinds_dict == {}:
+        print("Error: No keybinds found")
+        return
     dataset_size = 100
     mp_hands = mp.solutions.hands
     mp_drawing = mp.solutions.drawing_utils
@@ -69,67 +91,60 @@ def create_images(folder_name, keybinds_dict):
     hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.2, min_tracking_confidence=0.2, max_num_hands=1)     
     
     cap = cv2.VideoCapture(0)
+    
+    ret, frame = cap.read()
+    results = hands.process(frame)
+    if results.multi_hand_landmarks:
+        # Only consider the first hand
+        hand_landmarks = results.multi_hand_landmarks[0]
+
+        mp_drawing.draw_landmarks(
+            frame,  # image to draw
+            hand_landmarks,  # model output
+            mp_hands.HAND_CONNECTIONS,  # hand connections
+            mp_drawing_styles.get_default_hand_landmarks_style(),
+            mp_drawing_styles.get_default_hand_connections_style())
+    
     for key in keybinds_dict:
         name = keybinds_dict[key]
-        print('Name: ', name)
-        print('Key: ', key)
-        
+
         if not os.path.exists(os.path.join(DATA_DIR, str(key))):
             os.makedirs(os.path.join(DATA_DIR, str(key)))
 
-        print('Collecting data for {}'.format(key))
-
-        done = False
+        # wait for the user to press 'q' to start recording
         while True:
-            ret, frame = cap.read()
-            
-            results = hands.process(frame)
-            if results.multi_hand_landmarks:
-                # Only consider the first hand
-                hand_landmarks = results.multi_hand_landmarks[0]
-
-                mp_drawing.draw_landmarks(
-                    frame,  # image to draw
-                    hand_landmarks,  # model output
-                    mp_hands.HAND_CONNECTIONS,  # hand connections
-                    mp_drawing_styles.get_default_hand_landmarks_style(),
-                    mp_drawing_styles.get_default_hand_connections_style())
-            
             cv2.putText(frame, 'Press "Q" to record: '+key, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (20, 20, 20), 2, cv2.LINE_AA)
             cv2.imshow('frame', frame)
             
             if cv2.waitKey(25) == ord('q'):
                 break
+            if cv2.waitKey(25) == ord('='):
+                return
 
-        counter = 0
-        while counter < dataset_size:
-            ret, frame = cap.read()
-            results = hands.process(frame)
-            if results.multi_hand_landmarks:
-                # Only consider the first hand
-                hand_landmarks = results.multi_hand_landmarks[0]
-
-                mp_drawing.draw_landmarks(
-                    frame,  # image to draw
-                    hand_landmarks,  # model output
-                    mp_hands.HAND_CONNECTIONS,  # hand connections
-                    mp_drawing_styles.get_default_hand_landmarks_style(),
-                    mp_drawing_styles.get_default_hand_connections_style())
-            
+        # Record the images for the each key for 100 frames
+        for count in range(dataset_size):
             cv2.imshow('frame', frame)
             cv2.waitKey(25)  
-            cv2.imwrite(os.path.join(DATA_DIR, str(key), '{}.jpg'.format(counter)), frame)
-            
-            counter += 1
+            cv2.imwrite(os.path.join(DATA_DIR, str(key), '{}.jpg'.format(count)), frame)
 
     cap.release()
     cv2.destroyAllWindows()
 
 
 def create_data(folder_name):
+    """
+    This function creates the data for the classifier using the images created and the mediapipe library
+    
+    Args:
+        folder_name (str): The name of the folder where the data will be stored
+        
+    Returns:
+        None
+    """
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.3)
 
+    # Load the images
     DATA_DIR = f'data/{folder_name}/data'
 
     data = []
@@ -144,6 +159,7 @@ def create_data(folder_name):
             img = cv2.imread(os.path.join(DATA_DIR, dir_, img_path))
             img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
+            # Process the image
             results = hands.process(img_rgb)
             if results.multi_hand_landmarks:
                 for hand_landmarks in results.multi_hand_landmarks:
@@ -168,25 +184,27 @@ def create_data(folder_name):
     f.close()
 
 def train_classifier(folder_name):
-    data_dict = pickle.load(open(f'./data/{folder_name}/data.pickle', 'rb'))
-    data_padded = pad_sequences(data_dict['data'], maxlen=84, dtype='float32', padding='post')
-
-    shapes = [np.array(item).shape for item in data_dict['data']]
-    unique_shapes = set(shapes)
-
-    print(f"Unique shapes in data: {unique_shapes}")
+    """
+    This function trains the classifier using the data created and scikit RandomForestClassifier
     
-    data = data_padded
+    Args:
+        folder_name (str): The name of the folder where the data is stored
+        
+    Returns:
+        None
+    """
+    data_dict = pickle.load(open(f'./data/{folder_name}/data.pickle', 'rb'))
+    data = pad_sequences(data_dict['data'], maxlen=84, dtype='float32', padding='post')
     labels = np.asarray(data_dict['labels'])
 
+    # Split the data into training and testing
     x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=0.2, shuffle=True, stratify=labels)
 
+    # Train the classifier
     model = RandomForestClassifier()
-
     model.fit(x_train, y_train)
 
     y_predict = model.predict(x_test)
-
     score = accuracy_score(y_predict, y_test)
 
     print('{}% of samples were classified correctly !'.format(score * 100))
@@ -197,7 +215,16 @@ def train_classifier(folder_name):
 
 
 def inference_classifer(folder_name, keybinds_dict):
-    print('Directory: ', folder_name)
+    """
+    This function runs the classifier in real-time using the webcam
+    
+    Args:
+        folder_name (str): The name of the folder where the data is stored
+        keybinds_dict (dict): A dictionary with the keybinds and the corresponding actions
+        
+    Returns:
+        None
+    """
     model_dict = pickle.load(open(f'data/{folder_name}/model.p', 'rb'))
     model = model_dict['model']
     cap = cv2.VideoCapture(0)
@@ -214,9 +241,7 @@ def inference_classifer(folder_name, keybinds_dict):
 
     while True:
         ret, frame = cap.read()
-        if not ret or frame is None:
-            print("Error: Failed to capture frame.")
-            
+        if not ret or frame is None:            
             break  # Exit the loop if no frame is captured
         data_aux = []
         x_ = []
@@ -279,10 +304,7 @@ def inference_classifer(folder_name, keybinds_dict):
                             pyautogui.press(gesture_name)
                         except Exception as e:
                             print(f"Action error: {str(e)}")
-                    else:
-                        print(f"No keybind found for predicted class: {predicted_class_label}")
-                else:
-                    pass
+                    
 
                 
             except Exception as e:
