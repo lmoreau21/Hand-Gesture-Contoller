@@ -84,6 +84,7 @@ def create_images(folder_name, keybinds_dict):
         print("Error: No keybinds found")
         return
     dataset_size = 100
+    
     mp_hands = mp.solutions.hands
     mp_drawing = mp.solutions.drawing_utils
     mp_drawing_styles = mp.solutions.drawing_styles
@@ -92,18 +93,6 @@ def create_images(folder_name, keybinds_dict):
     
     cap = cv2.VideoCapture(0)
     
-    ret, frame = cap.read()
-    results = hands.process(frame)
-    if results.multi_hand_landmarks:
-        # Only consider the first hand
-        hand_landmarks = results.multi_hand_landmarks[0]
-
-        mp_drawing.draw_landmarks(
-            frame,  # image to draw
-            hand_landmarks,  # model output
-            mp_hands.HAND_CONNECTIONS,  # hand connections
-            mp_drawing_styles.get_default_hand_landmarks_style(),
-            mp_drawing_styles.get_default_hand_connections_style())
     
     for key in keybinds_dict:
         name = keybinds_dict[key]
@@ -113,6 +102,12 @@ def create_images(folder_name, keybinds_dict):
 
         # wait for the user to press 'q' to start recording
         while True:
+            ret, frame = cap.read()
+            results = hands.process(frame)
+            if results.multi_hand_landmarks:
+                hand_landmarks = results.multi_hand_landmarks[0]
+                mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS, mp_drawing_styles.get_default_hand_landmarks_style(), mp_drawing_styles.get_default_hand_connections_style())
+            
             cv2.putText(frame, 'Press "Q" to record: '+key, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (20, 20, 20), 2, cv2.LINE_AA)
             cv2.imshow('frame', frame)
             
@@ -123,6 +118,12 @@ def create_images(folder_name, keybinds_dict):
 
         # Record the images for the each key for 100 frames
         for count in range(dataset_size):
+            ret, frame = cap.read()
+            results = hands.process(frame)
+            if results.multi_hand_landmarks:
+                hand_landmarks = results.multi_hand_landmarks[0]
+                mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS, mp_drawing_styles.get_default_hand_landmarks_style(), mp_drawing_styles.get_default_hand_connections_style())
+            
             cv2.imshow('frame', frame)
             cv2.waitKey(25)  
             cv2.imwrite(os.path.join(DATA_DIR, str(key), '{}.jpg'.format(count)), frame)
@@ -246,7 +247,6 @@ def inference_classifer(folder_name, keybinds_dict):
         data_aux = []
         x_ = []
         y_ = []
-
 
         H, W, _ = frame.shape
 
