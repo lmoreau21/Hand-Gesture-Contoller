@@ -56,5 +56,13 @@ This project is a static gesture detector that allows you to press computer keys
 - Scikit-learn is a free software machine learning library for Python. 
 - It features various classification, regression, and clustering algorithms.
 
+### Troubleshooting Recommendations
+- Confirm backend is running and everything is installed
+- Reload website if data is missing
+- It works best to create a keybind and create images in one sitting
+- When interacting with the OpenCV window, confirm you have the tab selected. This is primiarly important when press 'Q' to record 
+- You can also press 'Q' to exit the Inference Classifer 
+- You can press '=' to exit run classifer and not train data
+
 [![Demo Video]](https://www.youtube.com/watch?v=GkLSWfltXjA)
 [![Intial project inspired by this youtube video]](https://www.youtube.com/watch?v=MJCSjXepaAM)

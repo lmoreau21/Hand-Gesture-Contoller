@@ -209,11 +209,11 @@ function App() {
       </FormControl>
       </Box>
       <Box>
-      <Typography variant="subtitle1">Step 2: Create Images: Records 100 frames of you performing the gesture. Then, it trains the model.</Typography>
+      <Typography variant="subtitle1">Step 2: Create Images: Records 100 frames of you performing the gesture. Then, it trains the model. Make sure the frame is selected when you press 'Q'</Typography>
       <Button variant="outlined" onClick={handleCreateImages}>Create Images</Button>
       </Box>
       <Box>
-      <Typography variant="subtitle1">Step 3: Run Classifier: Tracks hand and presses keys</Typography>
+      <Typography variant="subtitle1">Step 3: Run Classifier: Tracks hand and presses keys. Press 'q' to quit popup when it is selected</Typography>
       <Button variant="outlined" onClick={runClassifier}>Run Classifier</Button>
       </Box>
       <Box>
