@@ -12,23 +12,25 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from keras.preprocessing.sequence import pad_sequences
 
-keybinds_dict = {}
 folder_name = 'deafult'
 
-def get_keybinds_dict():
+def get_keybinds_dict(folder_name):
     print('Getting keybinds dict')
-    print('Folder name: ', folder_name)
+
     try: 
-        keybinds_dict = pickle.load(open(f'{folder_name}/keybinds_dict.p', 'rb'))
+        keybinds_dict = pickle.load(open(f'data/{folder_name}/keybinds_dict.p', 'rb'))
     except Exception as e:
         keybinds_dict = {}
     print(keybinds_dict)
     return keybinds_dict
 
-def update_keybinds_dict(new_dict):
+def update_keybinds_dict(new_dict, folder_name):
     global keybinds_dict
-    pickle.dump(new_dict, open(f'{folder_name}/keybinds_dict.p', 'wb'))
+    
+    pickle.dump(new_dict, open(f'data/{folder_name}/keybinds_dict.p', 'wb'))
+    
     keybinds_dict = new_dict
+    
     
 def update_folder_name(new_folder_name):
     global folder_name
@@ -37,26 +39,23 @@ def update_folder_name(new_folder_name):
  
 
 def get_all_folders():
-    folders = [f for f in os.listdir('.') if os.path.isdir(f)]
-    folders.remove('__pycache__')
-    folders.remove('.conda')
-    folders.remove('templates')
-    folders.remove('.git')
+    folders = [f for f in os.listdir('data') if os.path.isdir(os.path.join('data', f))]
+    print(folders)
+    print(folders)
     return folders
 
 def create_new_folder(new_folder_name):
-    global folder_name
-    folder_name = new_folder_name
+    folder_name = 'data/'+new_folder_name
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
         return True
     print(folder_name)
     return False
     
-def create_images():
+def create_images(folder_name, keybinds_dict):
     print('Creating images')
     print('Keybinds dict: ', keybinds_dict)
-    DATA_DIR = f'./{folder_name}/data'
+    DATA_DIR = f'./data/{folder_name}/data'
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
 
@@ -67,7 +66,7 @@ def create_images():
     mp_drawing = mp.solutions.drawing_utils
     mp_drawing_styles = mp.solutions.drawing_styles
 
-    hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.5, min_tracking_confidence=0.5, max_num_hands=1)     
+    hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.2, min_tracking_confidence=0.2, max_num_hands=1)     
     
     cap = cv2.VideoCapture(0)
     for key in keybinds_dict:
@@ -78,7 +77,7 @@ def create_images():
         if not os.path.exists(os.path.join(DATA_DIR, str(key))):
             os.makedirs(os.path.join(DATA_DIR, str(key)))
 
-        print('Collecting data for class {}'.format(key))
+        print('Collecting data for {}'.format(key))
 
         done = False
         while True:
@@ -96,7 +95,7 @@ def create_images():
                     mp_drawing_styles.get_default_hand_landmarks_style(),
                     mp_drawing_styles.get_default_hand_connections_style())
             
-            cv2.putText(frame, 'Press "Q" to record: '+name, (100, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (33, 33, 33), 3, cv2.LINE_AA)
+            cv2.putText(frame, 'Press "Q" to record: '+key, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (20, 20, 20), 2, cv2.LINE_AA)
             cv2.imshow('frame', frame)
             
             if cv2.waitKey(25) == ord('q'):
@@ -118,22 +117,20 @@ def create_images():
                     mp_drawing_styles.get_default_hand_connections_style())
             
             cv2.imshow('frame', frame)
-            cv2.waitKey(25)
+            cv2.waitKey(25)  
             cv2.imwrite(os.path.join(DATA_DIR, str(key), '{}.jpg'.format(counter)), frame)
             
             counter += 1
 
     cap.release()
     cv2.destroyAllWindows()
-    create_data()
-    train_classifier()
 
 
-def create_data():
+def create_data(folder_name):
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.3)
 
-    DATA_DIR = f'{folder_name}/data'
+    DATA_DIR = f'data/{folder_name}/data'
 
     data = []
     labels = []
@@ -166,12 +163,12 @@ def create_data():
                 data.append(data_aux)
                 labels.append(dir_)
 
-    f = open(f'{folder_name}/data.pickle', 'wb')
+    f = open(f'data/{folder_name}/data.pickle', 'wb')
     pickle.dump({'data': data, 'labels': labels}, f)
     f.close()
 
-def train_classifier():
-    data_dict = pickle.load(open(f'./{folder_name}/data.pickle', 'rb'))
+def train_classifier(folder_name):
+    data_dict = pickle.load(open(f'./data/{folder_name}/data.pickle', 'rb'))
     data_padded = pad_sequences(data_dict['data'], maxlen=84, dtype='float32', padding='post')
 
     shapes = [np.array(item).shape for item in data_dict['data']]
@@ -194,15 +191,14 @@ def train_classifier():
 
     print('{}% of samples were classified correctly !'.format(score * 100))
 
-    f = open(f'{folder_name}/model.p', 'wb')
+    f = open(f'data/{folder_name}/model.p', 'wb')
     pickle.dump({'model': model}, f)
     f.close()
 
 
-def inference_classifer():
+def inference_classifer(folder_name, keybinds_dict):
     print('Directory: ', folder_name)
-    model_dict = pickle.load(open(f'{folder_name}/model.p', 'rb'))
-    keybinds_dict = get_keybinds_dict()
+    model_dict = pickle.load(open(f'data/{folder_name}/model.p', 'rb'))
     model = model_dict['model']
     cap = cv2.VideoCapture(0)
     time.sleep(1)
@@ -214,7 +210,7 @@ def inference_classifer():
     mp_drawing = mp.solutions.drawing_utils
     mp_drawing_styles = mp.solutions.drawing_styles
 
-    hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.5, min_tracking_confidence=0.5, max_num_hands=1)
+    hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.6, min_tracking_confidence=0.6, max_num_hands=1)
 
     while True:
         ret, frame = cap.read()
@@ -286,7 +282,6 @@ def inference_classifer():
                     else:
                         print(f"No keybind found for predicted class: {predicted_class_label}")
                 else:
-                    #print("Confidence below threshold, no action taken.")
                     pass
 
                 
@@ -300,8 +295,9 @@ def inference_classifer():
 
         if cv2.waitKey(1) & 0xFF == ord('q'):  # Also allows exiting with 'q'
             break
-
+        
         cv2.waitKey(1)
+        
 
     cap.release()
     cv2.destroyAllWindows()
