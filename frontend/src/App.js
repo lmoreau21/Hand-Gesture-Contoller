@@ -184,7 +184,7 @@ function App() {
       <Typography paragraph>Follow the steps below to create a keybind, record images, train the model, and run the classifier.</Typography>
       <Stack  spacing={2}>
         <Box>
-      <Typography variant="subtitle1">Step 1: Name your keybind and or select keybind from dropdown</Typography>
+      <Typography variant="subtitle1">Step 1: Name your keybind and or select keybind from dropdown. Skip to step 4 if using pretrained model.</Typography>
       <Stack direction={'row'} justifyContent="flex-start" alignItems="center" spacing={2}>
         <TextField
           label="Folder Name"
@@ -208,12 +208,13 @@ function App() {
         </Select>
       </FormControl>
       </Box>
+      <Typography variant="subtitle1">Step 2: Scroll to Keybinds: towards the bottom of the page. Press add row and add a name and the corresponding key input for your keybind. I reccomend adding at least two rows. Press save after completing. </Typography>
       <Box>
-      <Typography variant="subtitle1">Step 2: Create Images: Records 100 frames of you performing the gesture. Then, it trains the model. Make sure the frame is selected when you press 'Q'</Typography>
+      <Typography variant="subtitle1">Step 3: Create Images: Pressing the button will start the recording process. You will make the hand symbol and it will record 100 frames. Move your hand closer and farther from the camera as it records. Then, it trains the model. Wait for the popup in the bottom right to move on! </Typography>
       <Button variant="outlined" onClick={handleCreateImages}>Create Images</Button>
       </Box>
       <Box>
-      <Typography variant="subtitle1">Step 3: Run Classifier: Tracks hand and presses keys. Press 'q' to quit popup when it is selected</Typography>
+      <Typography variant="subtitle1">Step 4: Run Classifier: Tracks hand and presses corresponding keys. Press 'q' to quit while on the popup to close.</Typography>
       <Button variant="outlined" onClick={runClassifier}>Run Classifier</Button>
       </Box>
       <Box>
